@@ -3,18 +3,18 @@ import Image from "next/image";
 import React from "react";
 import Link from "next/link";
 import InterviewCard from "@/components/InterviewCard";
+import { getCurrentUser } from "@/lib/actions/auth.action";
 import {
-  getCurrentUser,
+  getLatestInterviews,
   getInterviewsByUserId,
-} from "@/lib/actions/auth.action";
+} from "@/lib/actions/general.action";
 
 const page = async () => {
   const user = await getCurrentUser();
   const [userInterviews, latestInterviews] = await Promise.all([
     await getInterviewsByUserId(user?.id!),
-    await getInterviewsByUserId(user?.id!),
+    await getLatestInterviews({ userId: user?.id! }),
   ]);
-  
 
   const hasUpcomingInterviews = latestInterviews?.length > 0;
   const hasPassedInterviews = userInterviews?.length > 0;
@@ -57,7 +57,7 @@ const page = async () => {
 
       <section className="flex flex-col gap-6 mt-8">
         <h2>Take an Interview</h2>
-         <div className="interview-section">
+        <div className="interview-section">
           {hasUpcomingInterviews ? (
             latestInterviews?.map((interview) => (
               <InterviewCard {...interview} key={interview.id} />

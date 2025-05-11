@@ -2,25 +2,32 @@
 
 import { auth, db } from "@/firebase/admin";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 const SESSION_DURATION = 60 * 60 * 24 * 7;
 
 export async function setSessionCookie(idToken: string) {
-  const cookieStore = await cookies();
+  try {
+    const cookieStore = await cookies();
 
-  const sessionCookie = await auth.createSessionCookie(idToken, {
-    expiresIn: SESSION_DURATION * 1000, 
-  });
+    const sessionCookie = await auth.createSessionCookie(idToken, {
+      expiresIn: SESSION_DURATION * 1000,
+    });
 
-  // Set cookie in the browser
-  cookieStore.set("session", sessionCookie, {
-    maxAge: SESSION_DURATION,
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    sameSite: "lax",
-  });
+    // Set cookie in the browser
+    cookieStore.set("session", sessionCookie, {
+      maxAge: SESSION_DURATION,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      sameSite: "lax",
+    });
+  } catch (error) {
+    console.error("Error setting session cookie:", error);
+    redirect("/sign-in");
+  }
 }
+
 
 export async function signUp(params: SignUpParams) {
   const { uid, name, email } = params;
@@ -74,6 +81,8 @@ export async function signIn(params: SignInParams) {
       };
 
     await setSessionCookie(idToken);
+
+    redirect("/");
   } catch (error: any) {
     console.log("");
 
@@ -93,70 +102,34 @@ export async function signOut() {
 
 // Get current user from session cookie
 export async function getCurrentUser(): Promise<User | null> {
+  try {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get("session")?.value;
-  
+
     console.log("Session Cookie:", sessionCookie); // Debugging log
-  
+
     if (!sessionCookie) return null;
-  
-    try {
-      const decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
-      console.log("Decoded Claims:", decodedClaims); 
-  
-      const userRecord = await db.collection("users").doc(decodedClaims.uid).get();
-      if (!userRecord.exists) return null;
-  
-      return {
-        ...userRecord.data(),
-        id: userRecord.id,
-      } as User;
-    } catch (error) {
-      console.log("Error verifying session cookie:", error); 
-      return null;
-    }
+
+    const decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
+    console.log("Decoded Claims:", decodedClaims);
+
+    const userRecord = await db
+      .collection("users")
+      .doc(decodedClaims.uid)
+      .get();
+    if (!userRecord.exists) return null;
+
+    return {
+      ...userRecord.data(),
+      id: userRecord.id,
+    } as User;
+  } catch (error) {
+    console.log("Error verifying session cookie:", error);
+    return null;
   }
+}
 
 export async function isAuthenticated() {
   const user = await getCurrentUser();
   return !!user;
 }
-
-export async function getInterviewsByUserId(userId:string){
-
-  const interviews = await db
-    .collection("interviews")
-    .where("userId", "==", userId)
-    .orderBy("createdAt", "desc")
-    .get();
-
-
-    return interviews.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Interview[];
-
-}
-
-
-export async function getLatestInterviews(params: GetLatestInterviewsParams) {
-
-  const {userId , limit = 20} = params;
-
-  const interviews = await db
-    .collection("interviews")
-    .where("userId", "!=", userId)
-    .orderBy("createdAt", "desc")
-    .get();
-
-
-    return interviews.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Interview[];
-
-}
-  
-  
-
-
