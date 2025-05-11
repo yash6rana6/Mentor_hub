@@ -102,7 +102,7 @@ export async function getCurrentUser(): Promise<User | null> {
   
     try {
       const decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
-      console.log("Decoded Claims:", decodedClaims); // Debugging log
+      console.log("Decoded Claims:", decodedClaims); 
   
       const userRecord = await db.collection("users").doc(decodedClaims.uid).get();
       if (!userRecord.exists) return null;
@@ -112,7 +112,7 @@ export async function getCurrentUser(): Promise<User | null> {
         id: userRecord.id,
       } as User;
     } catch (error) {
-      console.log("Error verifying session cookie:", error); // Debugging log
+      console.log("Error verifying session cookie:", error); 
       return null;
     }
   }
@@ -121,3 +121,42 @@ export async function isAuthenticated() {
   const user = await getCurrentUser();
   return !!user;
 }
+
+export async function getInterviewsByUserId(userId:string){
+
+  const interviews = await db
+    .collection("interviews")
+    .where("userId", "==", userId)
+    .orderBy("createdAt", "desc")
+    .get();
+
+
+    return interviews.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as Interview[];
+
+}
+
+
+export async function getLatestInterviews(params: GetLatestInterviewsParams) {
+
+  const {userId , limit = 20} = params;
+
+  const interviews = await db
+    .collection("interviews")
+    .where("userId", "!=", userId)
+    .orderBy("createdAt", "desc")
+    .get();
+
+
+    return interviews.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as Interview[];
+
+}
+  
+  
+
+
