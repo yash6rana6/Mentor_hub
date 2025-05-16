@@ -10,16 +10,19 @@ import {
   getLatestInterviews,
   getInterviewsByUserId,
 } from "@/lib/actions/general.action";
+import { redirect } from "next/navigation";
 
 const page = async () => {
   const user = await getCurrentUser();
+  if(!user) redirect('/sign-up')
   const [userInterviews, latestInterviews] = await Promise.all([
-    await getInterviewsByUserId(user?.id!),
-    await getLatestInterviews({ userId: user?.id! }),
+     getInterviewsByUserId(user.id!),
+    getLatestInterviews({ userId: user.id! }),
   ]);
 
-  const hasUpcomingInterviews = latestInterviews?.length > 0;
-  const hasPassedInterviews = userInterviews?.length > 0;
+  const hasUpcomingInterviews = (latestInterviews ?? []).length > 0;
+
+  const hasPassedInterviews = (userInterviews ?? []).length > 0;
   return (
     <>
       <section className="card-cta">
@@ -74,3 +77,6 @@ const page = async () => {
 };
 
 export default page;
+
+
+
